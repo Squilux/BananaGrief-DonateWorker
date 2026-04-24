@@ -34,7 +34,12 @@ PRICES = {
     "case_1": 39,
     "case_5": 149,
     "case_10": 249,
-    "case_20": 449
+    "case_20": 449,
+
+    "vip": 299,
+    "vipplus": 499,
+    "premium": 999,
+    "helper": 1499,
 }
 
 # =========================
@@ -89,6 +94,31 @@ def process(comment, amount):
             run(f"lp user {nick} permission set flyingallowed.in.regions true")
         return
 
+    # VIP
+    if product.lower() == "vip":
+        if amount >= PRICES["vip"]:
+            run(f"lp user {nick} parent set vip")
+        return
+
+    # VIPPLUS
+    if product.lower() == "vipplus":
+        if amount >= PRICES["vipplus"]:
+            run(f"lp user {nick} parent set vipplus")
+        return
+
+    # PREMIUM
+    if product.lower() == "premium":
+        if amount >= PRICES["premium"]:
+            run(f"lp user {nick} parent set premium")
+        return
+
+    # HELPER
+    if product.lower() == "helper":
+        if amount >= PRICES["helper"]:
+            run(f"lp user {nick} parent set helper")
+        return
+
+
     # =========================
     # POINTS
     # =========================
@@ -133,7 +163,7 @@ def check_donates():
 
     headers = {
         "Authorization": f"Bearer {DA_TOKEN}"
-    }
+    } 
 
     while True:
         try:
