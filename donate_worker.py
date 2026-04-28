@@ -13,8 +13,7 @@ RCON_PORT = int(os.getenv("RCON_PORT"))
 RCON_PASS = os.getenv("RCON_PASS")
 
 # =========================
-# PRICES (RUB)
-# МЕНЯЙ ТУТ ЦЕНЫ
+# PRICES RUB
 # =========================
 PRICES = {
     "fly": 99,
@@ -40,6 +39,35 @@ PRICES = {
     "vipplus": 499,
     "premium": 999,
     "helper": 1499,
+}
+
+# =========================
+# PRICES EUR
+# =========================
+PRICES_EUR = {
+    "fly": 2,
+
+    "points_100": 1,
+    "points_300": 2,
+    "points_500": 3,
+    "points_1000": 5,
+    "points_1500": 6,
+    "points_2000": 8,
+
+    "acb_300": 1,
+    "acb_500": 2,
+    "acb_1000": 3,
+    "acb_1500": 4,
+
+    "case_1": 1,
+    "case_5": 3,
+    "case_10": 5,
+    "case_20": 9,
+
+    "vip": 4,
+    "vipplus": 6,
+    "premium": 12,
+    "helper": 18,
 }
 
 # =========================
@@ -69,91 +97,69 @@ def run(cmd):
 
 # =========================
 # PROCESS DONATE
-# Формат комментария:
-# Nick fly
-# Nick points 500
-# Nick acb 1000
-# Nick Divine 5
 # =========================
-def process(comment, amount):
+def process(comment, amount, currency):
     args = comment.split()
 
     if len(args) < 2:
-        print("BAD COMMENT")
+        print("BAD COMMENT:", comment)
         return
 
     nick = args[0]
-    product = args[1]
+    product = args[1].lower()
+    value = args[2] if len(args) >= 3 else None
+
+    prices = PRICES if currency == "RUB" else PRICES_EUR
+
+    print("PARSED:", nick, product, value, "|", amount, currency)
+
+    # =========================
+    # ПРИВИЛЕГИИ
+    # =========================
+    if product in ["vip", "vipplus", "premium", "helper"]:
+        if amount >= prices[product]:
+            run(f"lp user {nick} parent set {product}")
+        return
 
     # =========================
     # FLY
     # =========================
-    if product.lower() == "fly":
-        if amount >= PRICES["fly"]:
+    if product == "fly":
+        if amount >= prices["fly"]:
             run(f"lp user {nick} permission set flyingallowe.command.fly true")
             run(f"lp user {nick} permission set flyingallowed.in.regions true")
         return
 
-    # VIP
-    if product.lower() == "vip":
-        if amount >= PRICES["vip"]:
-            run(f"lp user {nick} parent set vip")
-        return
-
-    # VIPPLUS
-    if product.lower() == "vipplus":
-        if amount >= PRICES["vipplus"]:
-            run(f"lp user {nick} parent set vipplus")
-        return
-
-    # PREMIUM
-    if product.lower() == "premium":
-        if amount >= PRICES["premium"]:
-            run(f"lp user {nick} parent set premium")
-        return
-
-    # HELPER
-    if product.lower() == "helper":
-        if amount >= PRICES["helper"]:
-            run(f"lp user {nick} parent set helper")
-        return
-
-
     # =========================
     # POINTS
     # =========================
-    if product.lower() == "points" and len(args) >= 3:
-        value = args[2]
-
+    if product == "points" and value:
         key = f"points_{value}"
-
-        if key in PRICES and amount >= PRICES[key]:
+        if key in prices and amount >= prices[key]:
             run(f"points give {nick} {value}")
         return
 
     # =========================
-    # ACB
+    # БЛОКИ ПРИВАТА
     # =========================
-    if product.lower() == "acb" and len(args) >= 3:
-        value = args[2]
-
+    if product == "acb" and value:
         key = f"acb_{value}"
-
-        if key in PRICES and amount >= PRICES[key]:
+        if key in prices and amount >= prices[key]:
             run(f"acb {nick} {value}")
         return
 
     # =========================
-    # CASES
+    # КЕЙСЫ
     # =========================
-    if product in CASES and len(args) >= 3:
-        keys = args[2]
+    if value:
+        case_name = product.capitalize()
+        key = f"case_{value}"
 
-        key = f"case_{keys}"
-
-        if key in PRICES and amount >= PRICES[key]:
-            run(f"cc give virtual {product} {keys} {nick}")
+        if case_name in CASES and key in prices and amount >= prices[key]:
+            run(f"cc give virtual {case_name} {value} {nick}")
         return
+
+    print("UNKNOWN:", comment)
 
 # =========================
 # CHECK DONATIONS
@@ -163,7 +169,7 @@ def check_donates():
 
     headers = {
         "Authorization": f"Bearer {DA_TOKEN}"
-    } 
+    }
 
     while True:
         try:
@@ -185,12 +191,13 @@ def check_donates():
 
                     last_id = donate_id
 
-                    amount = int(float(d["amount"]))
+                    amount = float(d["amount"])
+                    currency = d.get("currency", "RUB")
                     comment = d["message"]
 
-                    print("NEW DONATE:", amount, comment)
+                    print("NEW DONATE:", amount, currency, comment)
 
-                    process(comment, amount)
+                    process(comment, amount, currency)
 
         except Exception as e:
             print("API ERROR:", e)
